@@ -1,12 +1,15 @@
 name: "[GPU] Docker whisperx-api"
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ v4-copy ]
+    tags: [ 'v*' ]
 
 jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    environment: workflow
 
     steps:
       - name: Checkout
@@ -21,24 +24,28 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
 
-      - name: Build and push Docker images
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: whisperx-api
           file: whisperx-api/Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ format('{0}/whishperx-api:{1}', secrets.DOCKERHUB_USERNAME, github.event.release.tag_name) }}
-
-      - name: Build and push Docker images as latest
-        if: ${{ !github.event.release.prerelease }}
-        uses: docker/build-push-action@v5
-        with:
-          context: transcription-api
-          file: transcription-api/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ format('{0}/whishper-transcription-api:latest', secrets.DOCKERHUB_USERNAME) }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
