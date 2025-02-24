@@ -7,4 +7,6 @@ starlette
 uvicorn
 Werkzeug
 fastapi
+# ctranslate2 requires CUDNN v8 but the default pytorch one is v9.1
+nvidia-cudnn-cu12==8.9.7.29
 # pip3 install "torch>=2+cpu" "torchaudio>=2+cpu" -f https://download.pytorch.org/whl/torch_stable.html
